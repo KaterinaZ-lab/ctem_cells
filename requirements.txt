@@ -7,3 +7,5 @@ langchain-ollama
 langchain-chroma
 chromadb
 boto3
+scikit-learn
+numpy
