@@ -47,31 +47,39 @@ def summarize_pdf(pdf_name: str):
     )
 
     # ---------------------------------------------------
-    # Retrieve relevant chunks
+    # Retrieve relevant chunks using multiple queries
+    # for broad coverage across the paper
     # ---------------------------------------------------
 
     start = time.time()
 
-    results = db.similarity_search_with_score(pdf_name, k=8)
+    queries = [
+        "background introduction motivation research question",
+        "methods experimental protocol materials procedures",
+        "results findings data observations",
+        "discussion conclusions implications future work",
+    ]
 
-    if not results:
-        print("No results found.")
-        return
-
-    # ---------------------------------------------------
-    # Filter chunks from the specific PDF
-    # ---------------------------------------------------
-
+    seen_ids = set()
     filtered_docs = []
+    scores = []
 
-    for doc, score in results:
-        source = doc.metadata.get("source", "")
-        if pdf_name in source:
-            filtered_docs.append(doc)
+    for query in queries:
+        results = db.similarity_search_with_score(query, k=10)
+        for doc, score in results:
+            source = doc.metadata.get("source", "")
+            chunk_id = doc.metadata.get("id", "")
+            if pdf_name in source and chunk_id not in seen_ids:
+                seen_ids.add(chunk_id)
+                filtered_docs.append(doc)
+                scores.append(score)
 
     if not filtered_docs:
         print("No chunks found for this PDF.")
         return
+
+    avg_score = round(sum(scores) / len(scores), 3)
+    print(f"Retrieved {len(filtered_docs)} unique chunks (avg retrieval score: {avg_score})")
 
     # ---------------------------------------------------
     # Combine context

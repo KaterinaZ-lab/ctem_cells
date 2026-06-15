@@ -26,18 +26,17 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("query_text", type=str, help="The query text.")
+    parser.add_argument("--pdf", type=str, default=None, help="Restrict results to a specific PDF.")
     args = parser.parse_args()
-
-    query_text = args.query_text
 
     # ---------------------------------------------------
     # Run RAG query
     # ---------------------------------------------------
 
-    query_rag(query_text)
+    query_rag(args.query_text, args.pdf)
 
 
-def query_rag(query_text: str):
+def query_rag(query_text: str, pdf_name: str = None):
 
     # ---------------------------------------------------
     # Load embedding function
@@ -59,6 +58,9 @@ def query_rag(query_text: str):
     # ---------------------------------------------------
 
     results = db.similarity_search_with_score(query_text, k=5)
+
+    if pdf_name:
+        results = [(doc, score) for doc, score in results if pdf_name in doc.metadata.get("source", "")]
 
     # ---------------------------------------------------
     # Build context from retrieved chunks
@@ -92,10 +94,13 @@ def query_rag(query_text: str):
     response_text = model.invoke(prompt)
 
     # ---------------------------------------------------
-    # Collect sources
+    # Collect sources with scores
     # ---------------------------------------------------
 
-    sources = [doc.metadata.get("id", None) for doc, _score in results]
+    sources = [
+        f"{doc.metadata.get('id', None)} (score: {round(score, 3)})"
+        for doc, score in results
+    ]
 
     # ---------------------------------------------------
     # Output response
